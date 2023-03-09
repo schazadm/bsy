@@ -1,5 +1,3 @@
-# Antworten
-
 ## Task 1
 
 ### Subtask 1.1 – See unit status and grouping
