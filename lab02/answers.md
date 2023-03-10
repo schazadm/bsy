@@ -24,7 +24,7 @@ To manage resources that belong to a certain group. For example the slice `user.
 
 ```
 pstree seems to show less process and also less information.
-Yes I can see bash in both outputs.
+Yes, I can see bash in both outputs.
 ```
 
 ### Subtask 1.2 – Targets
@@ -284,36 +284,38 @@ ssh.service
 ubuntu@boot:~$ systemctl status sshd.service
 ● ssh.service - OpenBSD Secure Shell server
      Loaded: loaded (/lib/systemd/system/ssh.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:26:37 UTC; 6min ago
+     Active: active (running) since Fri 2023-03-10 09:07:00 UTC; 1h 5min ago
        Docs: man:sshd(8)
              man:sshd_config(5)
-   Main PID: 821 (sshd)
-      Tasks: 1 (limit: 4682)
-     Memory: 4.9M
+    Process: 641 ExecStartPre=/usr/sbin/sshd -t (code=exited, status=0/SUCCESS)
+   Main PID: 681 (sshd)
+      Tasks: 1 (limit: 9513)
+     Memory: 6.8M
      CGroup: /system.slice/ssh.service
-             └─821 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+             └─681 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
 
-May 27 17:26:37 boot systemd[1]: Starting OpenBSD Secure Shell server...
-May 27 17:26:37 boot sshd[821]: Server listening on 0.0.0.0 port 22.
-May 27 17:26:37 boot systemd[1]: Started OpenBSD Secure Shell server.
-May 27 17:26:37 boot sshd[821]: Server listening on :: port 22.
-May 27 17:26:44 boot sshd[934]: Accepted publickey for ubuntu from 172.27.149.182 port 49863 ssh2: RSA SHA256:1OPrajt2OgspRtZJaJ6HHbFTJltQYgmUwe6ZQZltOP4
-May 27 17:26:44 boot sshd[934]: pam_unix(sshd:session): session opened for user ubuntu by (uid=0)
+Mar 10 09:07:00 bsy-boot-lab systemd[1]: Starting OpenBSD Secure Shell server...
+Mar 10 09:07:00 bsy-boot-lab sshd[681]: Server listening on 0.0.0.0 port 22.
+Mar 10 09:07:00 bsy-boot-lab sshd[681]: Server listening on :: port 22.
+Mar 10 09:07:00 bsy-boot-lab systemd[1]: Started OpenBSD Secure Shell server.
+Mar 10 09:11:43 bsy-boot-lab sshd[865]: Connection reset by 160.85.148.96 port 55062 [preauth]
+Mar 10 09:13:03 bsy-boot-lab sshd[874]: Accepted publickey for ubuntu from 160.85.148.96 port 55070 ssh2: RSA SHA256:rh+4lkk3TFXrGrwPSYe5jK/aG0cxJrU54kgQ4aRrndU
+Mar 10 09:13:03 bsy-boot-lab sshd[874]: pam_unix(sshd:session): session opened for user ubuntu by (uid=0)
 
-Yes --> Main PID: 3858 (sshd)
+Yes --> Main PID: 681 (sshd)
 ```
 
 * Can you tell on which port it is running from the logs?
 
 ```
-Yes
+Yes, on the port 22
 ```
 
 * In order to see the full logs of the service we can use a specific command. How do you see the logs of the ssh.service unit?
 
 ```
 ubuntu@boot:~$ journalctl -u sshd.service
--- Logs begin at Fri 2022-05-27 17:26:01 UTC, end at Fri 2022-05-27 17:27:06 UTC. --
+-- Logs begin at Fri 2023-03-10 07:55:14 UTC, end at Fri 2023-03-10 10:17:01 UTC. --
 -- No entries --
 ```
 
