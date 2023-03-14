@@ -3,7 +3,7 @@
 ### Subtask 1.1 – See unit status and grouping
 * Use the command to see the status of all units in the system
 
-```
+```bash
 ubuntu@boot:~$ systemctl status --all
 ...
 ```
@@ -31,7 +31,7 @@ Yes, I can see bash in both outputs.
 
 * Use the command to list all available target units
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-units --all -t target
   UNIT                                                    LOAD   ACTIVE   SUB    DESCRIPTION
   basic.target                                            loaded active   active Basic System
@@ -81,7 +81,7 @@ To show all installed unit files use 'systemctl list-unit-files'.
 
 * Find out which command to use to find the default target for the local operating system
 
-```
+```bash
 ubuntu@boot:~$ systemctl get-default
 graphical.target
 ```
@@ -94,7 +94,7 @@ graphical.target
 
 * Which command can you use to see the unit file of the default target and its location?
 
-```
+```bash
 ubuntu@boot:~$ systemctl cat graphical.target
 # /lib/systemd/system/graphical.target
 #  SPDX-License-Identifier: LGPL-2.1+
@@ -137,14 +137,17 @@ Wants --> The service doesn't need the wanted services to be running, but it wou
 
 * There is a command that lets you see the “dependencies” of each unit.
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-dependencies
 ...
 ```
+> why is multi-user.target not dependent on basic.target? Or how can you read the graph?
+
+<br>
 
 * What is the command to list the dependencies of the default target?
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-dependencies graphical.target
 graphical.target
 ● ├─accounts-daemon.service
@@ -202,7 +205,7 @@ graphical.target
 
 * What is the command to see the dependencies of the ‘sysinit.target’?
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-dependencies sysinit.target
 sysinit.target
 ● ├─apparmor.service
@@ -259,14 +262,14 @@ This recursively lists units following the Requires=, Requisite=, ConsistsOf=, W
 
 * Use the man command to see which systemctl command allows you to see which units depend on a specific unit.
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-dependencies --reverse
 default.target
 ```
 
 * Which target(s) depends on the ssh.service ?
 
-```
+```bash
 ubuntu@boot:~$ systemctl list-dependencies ssh.service --reverse
 ssh.service
 ● ├─cloud-init.service
@@ -280,7 +283,7 @@ ssh.service
 
 * Can you tell from the status command the PID of the ssh process?
 
-```
+```bash
 ubuntu@boot:~$ systemctl status sshd.service
 ● ssh.service - OpenBSD Secure Shell server
      Loaded: loaded (/lib/systemd/system/ssh.service; enabled; vendor preset: enabled)
@@ -321,110 +324,111 @@ ubuntu@boot:~$ journalctl -u sshd.service
 
 * What command can you use to see the unit-file of the ssh.service? Can you also see its location on the file system?
 
-```
-ubuntu@boot:~$ systemctl cat graphical.target
-# /lib/systemd/system/graphical.target
-#  SPDX-License-Identifier: LGPL-2.1+
-#
-#  This file is part of systemd.
-#
-#  systemd is free software; you can redistribute it and/or modify it
-#  under the terms of the GNU Lesser General Public License as published by
-#  the Free Software Foundation; either version 2.1 of the License, or
-#  (at your option) any later version.
-
+```bash
+ubuntu@bsy-boot-lab:~$ systemctl cat sshd.service
+# /lib/systemd/system/ssh.service
 [Unit]
-Description=Graphical Interface
-Documentation=man:systemd.special(7)
-Requires=multi-user.target
-Wants=display-manager.service
-Conflicts=rescue.service rescue.target
-After=multi-user.target rescue.service rescue.target display-manager.service
-AllowIsolate=yes
+Description=OpenBSD Secure Shell server
+Documentation=man:sshd(8) man:sshd_config(5)
+After=network.target auditd.service
+ConditionPathExists=!/etc/ssh/sshd_not_to_be_run
+
+[Service]
+EnvironmentFile=-/etc/default/ssh
+ExecStartPre=/usr/sbin/sshd -t
+ExecStart=/usr/sbin/sshd -D $SSHD_OPTS
+ExecReload=/usr/sbin/sshd -t
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartPreventExitStatus=255
+Type=notify
+RuntimeDirectory=sshd
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
+Alias=sshd.service
 ```
 
 ### Subtask 2.2 – Killing a service: Restart
 
 * Use the “kill -SIGKILL <PID>“ command (e.g., “sudo kill -9 676”) to kill the “cron.service”. If you check the status of the cron service before and after killing the cron process, what do you see?
 
-```
-ubuntu@boot:~$ systemctl status cron.service
+```bash
+ubuntu@bsy-boot-lab:~$ systemctl status cron.service
 ● cron.service - Regular background program processing daemon
      Loaded: loaded (/lib/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:26:35 UTC; 8min ago
+     Active: active (running) since Tue 2023-03-14 17:06:30 UTC; 1h 3min ago
        Docs: man:cron(8)
-   Main PID: 702 (cron)
+   Main PID: 699 (cron)
       Tasks: 1 (limit: 4682)
-     Memory: 1.0M
+     Memory: 1.1M
      CGroup: /system.slice/cron.service
-             └─702 /usr/sbin/cron -f
+             └─699 /usr/sbin/cron -f
 
-May 27 17:26:35 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:26:35 boot cron[702]: (CRON) INFO (pidfile fd = 3)
-May 27 17:26:35 boot cron[702]: (CRON) INFO (Running @reboot jobs)
-May 27 17:33:01 boot CRON[1509]: pam_unix(cron:session): session opened for user root by (uid=0)
-May 27 17:33:01 boot CRON[1515]: (root) CMD (   test -x /etc/cron.daily/popularity-contest && /etc/cron.daily/popularity-contest --crond)
-May 27 17:33:01 boot CRON[1509]: pam_unix(cron:session): session closed for user root
-ubuntu@boot:~$ sudo kill -9 702
-ubuntu@boot:~$ systemctl status cron.service
+Mar 14 17:06:30 bsy-boot-lab cron[699]: (CRON) INFO (pidfile fd = 3)
+Mar 14 17:06:30 bsy-boot-lab cron[699]: (CRON) INFO (Running @reboot jobs)
+Mar 14 17:06:30 bsy-boot-lab systemd[1]: Started Regular background program processing daemon.
+Mar 14 17:17:01 bsy-boot-lab CRON[1470]: pam_unix(cron:session): session opened for user root by (uid=0)
+Mar 14 17:17:01 bsy-boot-lab CRON[1470]: pam_unix(cron:session): session closed for user root
+Mar 14 17:33:01 bsy-boot-lab CRON[1528]: pam_unix(cron:session): session opened for user root by (uid=0)
+Mar 14 17:33:01 bsy-boot-lab CRON[1529]: (root) CMD (   test -x /etc/cron.daily/popularity-contest && /et>
+Mar 14 17:33:01 bsy-boot-lab CRON[1528]: pam_unix(cron:session): session closed for user root
+```
+
+
+```bash
+ubuntu@bsy-boot-lab:~$ systemctl status cron.service
 ● cron.service - Regular background program processing daemon
      Loaded: loaded (/lib/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:35:58 UTC; 4s ago
+     Active: active (running) since Tue 2023-03-14 18:11:32 UTC; 6s ago
        Docs: man:cron(8)
-   Main PID: 1579 (cron)
+   Main PID: 13519 (cron)
       Tasks: 1 (limit: 4682)
      Memory: 448.0K
      CGroup: /system.slice/cron.service
-             └─1579 /usr/sbin/cron -f
+             └─13519 /usr/sbin/cron -f
 
-May 27 17:35:58 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:35:58 boot cron[1579]: (CRON) INFO (pidfile fd = 3)
-May 27 17:35:58 boot cron[1579]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
-
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: cron.service: Scheduled restart job, restart counter is at 1.
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: Stopped Regular background program processing daemon.
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: Started Regular background program processing daemon.
+Mar 14 18:11:32 bsy-boot-lab cron[13519]: (CRON) INFO (pidfile fd = 3)
+Mar 14 18:11:32 bsy-boot-lab cron[13519]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
+```
+```
 The service was stopped / killed, but the service is auto-restarting by itself. Check the Main PID (it changed)
 ```
 
 * Let’s now try to use a different signal (TERM) to kill cron (without ‘-9’): sudo kill <PID> What happens in this case?
 
+```bash
+ubuntu@bsy-boot-lab:~$ sudo kill 13519
+ubuntu@bsy-boot-lab:~$ systemctl status cron.service
+● cron.service - Regular background program processing daemon
+     Loaded: loaded (/lib/systemd/system/cron.service; enabled; vendor preset: enabled)
+     Active: inactive (dead) since Tue 2023-03-14 18:17:12 UTC; 3s ago
+       Docs: man:cron(8)
+    Process: 13519 ExecStart=/usr/sbin/cron -f $EXTRA_OPTS (code=killed, signal=TERM)
+   Main PID: 13519 (code=killed, signal=TERM)
+
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: cron.service: Scheduled restart job, restart counter is at 1.
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: Stopped Regular background program processing daemon.
+Mar 14 18:11:32 bsy-boot-lab systemd[1]: Started Regular background program processing daemon.
+Mar 14 18:11:32 bsy-boot-lab cron[13519]: (CRON) INFO (pidfile fd = 3)
+Mar 14 18:11:32 bsy-boot-lab cron[13519]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
+Mar 14 18:17:01 bsy-boot-lab CRON[13527]: pam_unix(cron:session): session opened for user root by (uid=0)
+Mar 14 18:17:01 bsy-boot-lab CRON[13527]: pam_unix(cron:session): session closed for user root
+Mar 14 18:17:12 bsy-boot-lab systemd[1]: cron.service: Succeeded.
 ```
-ubuntu@boot:~$ systemctl status cron.service
-● cron.service - Regular background program processing daemon
-     Loaded: loaded (/lib/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:36:23 UTC; 57s ago
-       Docs: man:cron(8)
-   Main PID: 1614 (cron)
-      Tasks: 1 (limit: 4682)
-     Memory: 440.0K
-     CGroup: /system.slice/cron.service
-             └─1614 /usr/sbin/cron -f
 
-May 27 17:36:23 boot systemd[1]: cron.service: Scheduled restart job, restart counter is at 2.
-May 27 17:36:23 boot systemd[1]: Stopped Regular background program processing daemon.
-May 27 17:36:23 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:36:23 boot cron[1614]: (CRON) INFO (pidfile fd = 3)
-May 27 17:36:23 boot cron[1614]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
-ubuntu@boot:~$ sudo kill 1614
-ubuntu@boot:~$ systemctl status cron.service
-● cron.service - Regular background program processing daemon
-     Loaded: loaded (/lib/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: inactive (dead) since Fri 2022-05-27 17:37:35 UTC; 13s ago
-       Docs: man:cron(8)
-    Process: 1614 ExecStart=/usr/sbin/cron -f $EXTRA_OPTS (code=killed, signal=TERM)
-   Main PID: 1614 (code=killed, signal=TERM)
-
-May 27 17:36:23 boot systemd[1]: cron.service: Scheduled restart job, restart counter is at 2.
-May 27 17:36:23 boot systemd[1]: Stopped Regular background program processing daemon.
-May 27 17:36:23 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:36:23 boot cron[1614]: (CRON) INFO (pidfile fd = 3)
-May 27 17:36:23 boot cron[1614]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
-May 27 17:37:35 boot systemd[1]: cron.service: Succeeded.
-
+```
 The service is now inactive (dead) and will not be auto-starting
 ```
 
 * Look at the cron.service unit file with the systemctl cat command. What are the restarting conditions?
 
-```
+```bash
 ubuntu@boot:~$ systemctl cat cron.service
 # /lib/systemd/system/cron.service
 [Unit]
@@ -453,41 +457,45 @@ If set to on-failure, the service will be restarted when the process exits with 
 
 * Let’s make a copy of the original cron.service file in /etc/systemd/system (configuration in /etc overrides the one in /lib) Use a text editor to change the “Restart” condition to “always” Force systemd to reload the units with the daemon-reload subcommand Verify that also when using the TERM signal to kill the cron process.
 
-```
+```bash
 ubuntu@boot:~$ sudo cp /usr/lib/systemd/system/cron.service /etc/systemd/system/
 ubuntu@boot:~$ sudo vim /etc/systemd/system/cron.service
 ubuntu@boot:~$ sudo systemctl daemon-reload
 ubuntu@boot:~$ sudo systemctl start cron.service
-ubuntu@boot:~$ sudo systemctl status cron.service
+ubuntu@bsy-boot-lab:~$ sudo systemctl status cron.service
 ● cron.service - Regular background program processing daemon
      Loaded: loaded (/etc/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:40:17 UTC; 12s ago
+     Active: active (running) since Tue 2023-03-14 18:29:22 UTC; 17s ago
        Docs: man:cron(8)
-   Main PID: 1686 (cron)
+   Main PID: 13654 (cron)
       Tasks: 1 (limit: 4682)
-     Memory: 408.0K
+     Memory: 448.0K
      CGroup: /system.slice/cron.service
-             └─1686 /usr/sbin/cron -f
+             └─13654 /usr/sbin/cron -f
 
-May 27 17:40:17 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:40:17 boot cron[1686]: (CRON) INFO (pidfile fd = 3)
-May 27 17:40:17 boot cron[1686]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
-ubuntu@boot:~$ sudo kill 1686
-ubuntu@boot:~$ sudo systemctl status cron.service
+Mar 14 18:29:22 bsy-boot-lab systemd[1]: Started Regular background program processing daemon.
+Mar 14 18:29:22 bsy-boot-lab cron[13654]: (CRON) INFO (pidfile fd = 3)
+Mar 14 18:29:22 bsy-boot-lab cron[13654]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
+ubuntu@bsy-boot-lab:~$ sudo kill 13654
+ubuntu@bsy-boot-lab:~$ sudo systemctl status cron.service
 ● cron.service - Regular background program processing daemon
      Loaded: loaded (/etc/systemd/system/cron.service; enabled; vendor preset: enabled)
-     Active: active (running) since Fri 2022-05-27 17:40:37 UTC; 1s ago
+     Active: active (running) since Tue 2023-03-14 18:30:12 UTC; 5s ago
        Docs: man:cron(8)
-   Main PID: 1723 (cron)
+   Main PID: 13681 (cron)
       Tasks: 1 (limit: 4682)
      Memory: 444.0K
      CGroup: /system.slice/cron.service
-             └─1723 /usr/sbin/cron -f
+             └─13681 /usr/sbin/cron -f
 
-May 27 17:40:37 boot systemd[1]: Started Regular background program processing daemon.
-May 27 17:40:37 boot cron[1723]: (CRON) INFO (pidfile fd = 3)
-May 27 17:40:37 boot cron[1723]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
+Mar 14 18:30:12 bsy-boot-lab systemd[1]: cron.service: Scheduled restart job, restart counter is at 1.
+Mar 14 18:30:12 bsy-boot-lab systemd[1]: Stopped Regular background program processing daemon.
+Mar 14 18:30:12 bsy-boot-lab systemd[1]: Started Regular background program processing daemon.
+Mar 14 18:30:12 bsy-boot-lab cron[13681]: (CRON) INFO (pidfile fd = 3)
+Mar 14 18:30:12 bsy-boot-lab cron[13681]: (CRON) INFO (Skipping @reboot jobs -- not system startup)
+```
 
+```
 This shows that it worked, because the service is still running even after sending SIGTERM.
 ```
 
@@ -495,7 +503,7 @@ This shows that it worked, because the service is still running even after sendi
 
 * What would happen if you were to stop the ssh.service with systemctl stop? Would your ssh session (and bash terminal) be killed?
 
-```
+```bash
 ubuntu@boot:~$ systemctl cat sshd.service
 # /lib/systemd/system/ssh.service
 [Unit]
@@ -536,50 +544,151 @@ This means that my SSH session would not be killed by systemd and will outlive t
 
 * Create a service that writes the file /home/ubuntu/service_started each time it gets started
 
+> 1. methood
+
+```bash
+sudo nano /usr/local/bin/create_file.sh
 ```
-ubuntu@boot:~$ sudo su
-root@boot:/home/ubuntu# cat <<EOF > /etc/systemd/user/create_file.service
+
+```bash
+#!/bin/bash
+touch /home/ubuntu/service_started
+```
+
+```bash
+sudo nano /etc/systemd/system/file_creation.service
+```
+
+```bash
 [Unit]
-Description=Create file
+Description=Service to create /home/ubuntu/service_started file
 
 [Service]
-Type=simple
-ExecStart=/usr/bin/touch /home/ubuntu/service_started
+Type=simpleExecStart=/usr/local/bin/create_file.sh
 WatchdogSec=20
 Restart=on-failure
 TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
-EOF
-
-ubuntu@boot:~$ systemctl start --user create_file.service
-ubuntu@boot:~$ systemctl status --user create_file.service
-● create_file.service - Create file
-     Loaded: loaded (/etc/xdg/systemd/user/create_file.service; disabled; vendor preset: enabled)
-     Active: inactive (dead)
-
-May 27 17:45:10 boot systemd[1148]: Started Create file.
-May 27 17:45:10 boot systemd[1148]: create_file.service: Succeeded.
-
-ubuntu@boot:~$ ls -l /home/ubuntu/service_started
--rw-rw-r-- 1 ubuntu ubuntu 0 May 27 17:45 /home/ubuntu/service_started
 ```
 
-### Subtask 3.2 – Optional: set dependencies with Install section
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start file_creation.service
+sudo systemctl status file_creation.service
+```
+
+```bash
+ls -l /home/ubuntu/service_started
+```
+
+<br>
+
+> 2. method
+
+```bash
+ubuntu@bsy-boot-lab:~$ cd /etc/systemd/user/
+ubuntu@bsy-boot-lab:/etc/systemd/user$ sudo nano create_file.service
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl start --user create_file.service
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl status --user create_file.service
+● create_file.service - if start touch children...I mean file
+     Loaded: loaded (/etc/xdg/systemd/user/create_file.service; disabled; vendor preset: enable>
+     Active: inactive (dead)
+
+Mar 14 19:26:38 bsy-boot-lab systemd[1286]: Started if start touch children...I mean file.
+Mar 14 19:26:38 bsy-boot-lab systemd[1286]: create_file.service: Succeeded.
+
+ubuntu@bsy-boot-lab:/etc/systemd/user$ ll /home/ubuntu/service_started
+-rw-rw-r-- 1 ubuntu ubuntu 0 Mar 14 19:26 /home/ubuntu/service_started
+```
+
+### Subtask 3.2 – Set dependencies with Install section
 
 * How would you extend your service unit file to make it automatically start with the multi-user.target?
 
 ```
-ubuntu@boot:~$ sudo su
-root@boot:/home/ubuntu# cat <<EOF >> /etc/systemd/user/create_file.service
-[Install]
-WantedBy=multi-user.target
-EOF
+already done previously
 ```
 
 * In order to make your service autostart you will also need to enable it with the appropriate command.
 
+```bash
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl enable --user create_file.service
+Created symlink /home/ubuntu/.config/systemd/user/multi-user.target.wants/create_file.service → /etc/xdg/systemd/user/create_file.service.
 ```
-root@boot:/home/ubuntu# systemctl enable --user create_file.service
+
+* Does this start the service? What command enables and immediately starts the service?
+
+```bash
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl enable --now --user create_file.service
 ```
+
+## Task 4 - Systemd User
+
+### Subtask 4.1 – Unit File Installation
+
+```bash
+ubuntu@bsy-boot-lab:/etc/systemd/user$ sudo nano http_share.service
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl enable --user http_share.service
+Created symlink /home/ubuntu/.config/systemd/user/multi-user.target.wants/http_share.service → /etc/xdg/systemd/user/http_share.service.
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl start --user http_share.service
+```
+
+### Subtask 4.2 – Follow up service
+
+```bash
+ubuntu@bsy-boot-lab:/etc/systemd/user$ sudo nano /usr/local/bin/download_html.sh
+
+#!/bin/bash
+VM_PUBLIC_IP="160.85.37.84"
+wget -O /home/ubuntu/downloaded_page.html http://$VM_PUBLIC_IP:8080
+
+chmod +x /usr/local/bin/download_html.sh
+```
+```bash
+sudo nano download_html.service
+
+[Unit]
+Description=Download HTML page from HTTP Sharing Server
+After=http_share.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/download_html.sh
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+subuntu@bsy-boot-lab:/etc/systemd/user$ systemctl --user daemon-reload
+
+ubuntu@bsy-boot-lab:/etc/systemd/user$ systemctl --user enable --now download_html.service
+```
+
+
+### Subtask 4.3 – Start Without User Login
+
+```bash
+ubuntu@bsy-boot-lab:/etc/systemd/user$ sudo nano /etc/systemd/system/start_ubuntu_user_services.service
+
+[Unit]
+Description=Start ubuntu user services at boot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/bin/systemctl --user --no-block start default.target
+ExecStop=/usr/bin/systemctl --user --no-block stop default.target
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+ubuntu@bsy-boot-lab:/etc/systemd/user$ sudo systemctl enable start_ubuntu_user_services.service
+Created symlink /etc/systemd/system/multi-user.target.wants/start_ubuntu_user_services.service → /etc/systemd/system/start_ubuntu_user_services.service.
+```
+
